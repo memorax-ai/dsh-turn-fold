@@ -11,7 +11,7 @@ const { pathToFileURL } = require('node:url')
 const INLINE = require('./inline-source.cjs')
 
 const LEGACY_RANGE = '>=0.1.0-rc.8 <=0.1.1-rc.2'
-const DSH_MODERN_RANGE = '>=0.1.2-alpha.5 <0.1.7-0'
+const DSH_MODERN_RANGE = '>=0.1.2-alpha.5 <0.1.8-0'
 
 function manifestVersion(filename) {
   return JSON.parse(fs.readFileSync(filename, 'utf8')).version

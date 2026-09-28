@@ -83,8 +83,8 @@ test('target: installed DSH stays inside the bounded Patch compatibility range',
   assert.ok(semver.satisfies('0.1.1-rc.2', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.1.1-rc.3', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.2-alpha.5', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
-  assert.ok(!semver.satisfies('0.1.7-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
-  for (const version of ['0.1.5-rc.2', '0.1.6-alpha.2']) {
+  assert.ok(!semver.satisfies('0.1.8-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  for (const version of ['0.1.5-rc.2', '0.1.6-alpha.2', '0.1.7-rc.2']) {
     assert.ok(semver.satisfies(version, DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
     assert.ok(semver.satisfies(version, MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-chat']))
   }
@@ -116,9 +116,9 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
   deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
-    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
-    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0',
+    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
+    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
+    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
     'dsh-harmony': '^0.8.11',
   })
   deepEqual(MANIFEST.peerDependenciesMeta, {
@@ -237,7 +237,7 @@ test('transform: final browser bundle parses without syntax errors', () => {
   assert.match(transformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
 })
 
-test('transform: DSH 0.1.2 chat bundle uses the new renderer seam and parses', () => {
+test('transform: modern DSH chat bundle uses the new renderer seam and parses', () => {
   const sf = sourceFile('client-012.patched.js', dsh012TransformedSource)
   deepEqual(sf.parseDiagnostics.length, 0)
   assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode: \(nodeKey\) =>/)

@@ -37,7 +37,7 @@ short open/close transition that unmounts the activity after it closes.
 Three shape-guarded Source Patches run in memory against the compiled browser
 bundle. For DSH `0.1.0-rc.8` through `0.1.1-rc.2`, they target
 `@deepseek-ai/dsh-client-ui-conversation`; for DSH `0.1.2-alpha.5` through the
-`0.1.6` line (including prereleases), they follow the renderer into `@deepseek-ai/dsh-client-ui-chat`.
+`0.1.7` line (including prereleases), they follow the renderer into `@deepseek-ai/dsh-client-ui-chat`.
 Installed DSH files are never modified. Every selector must still match exactly
 once, so an incompatible compiled shape fails closed instead of modifying an
 uncertain target.
@@ -90,4 +90,4 @@ npm version patch
 git push --follow-tags
 ```
 
-Compatibility checks cover the real `0.1.5-rc.2` and `0.1.6-alpha.2` bundles. Run `npm test` with `DSH_TURN_FOLD_UPSTREAM_ROOT` pointing to an isolated DSH installation to exercise that chat bundle. Exact selector counts remain required.
+Compatibility checks cover the real `0.1.5-rc.2`, `0.1.6-alpha.2`, and `0.1.7-rc.2` bundles. Run `npm test` with `DSH_TURN_FOLD_UPSTREAM_ROOT` pointing to an isolated DSH installation to exercise that chat bundle. Exact selector counts remain required.
