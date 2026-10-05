@@ -1,12 +1,18 @@
 'use strict'
 
 // Host entry for the @ch4acko3/dsh-turn-fold Harmony provider.
-const { Config, SETTINGS_NAMESPACE, createSettingsSchema } = require('./settings.cjs')
+const { SETTINGS_NAMESPACE, createConfigSchema, createSettingsSchema } = require('./settings.cjs')
 
-exports.Config = Config
+// Resolve the schema after the Host has finished importing its ESM graph.
+Object.defineProperty(exports, 'Config', { enumerable: true, get: createConfigSchema })
 exports.inject = ['harmony']
 exports.apply = (ctx, config) => {
   ctx.inject(['settings'], (settingsCtx) => {
-    settingsCtx.settings.register(SETTINGS_NAMESPACE, createSettingsSchema(), { base: config })
+    if (typeof settingsCtx.settings.configure === 'function') {
+      settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
+    } else {
+      const summaryFields = typeof config.summaryFields.get === 'function' ? config.summaryFields.get() : config.summaryFields
+      settingsCtx.settings.register(SETTINGS_NAMESPACE, createSettingsSchema(), { base: { ...config, summaryFields } })
+    }
   })
 }

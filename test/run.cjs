@@ -23,6 +23,7 @@ const TARGET_ROOT = path.dirname(TARGET_PACKAGE)
 const TARGET_PATH = path.join(TARGET_ROOT, 'lib/client.js')
 const DSH_012_PACKAGE = require.resolve('@deepseek-ai/dsh-client-ui-chat/package.json', { paths: [process.env.DSH_TURN_FOLD_UPSTREAM_ROOT || ROOT] })
 const DSH_012_PATH = path.join(path.dirname(DSH_012_PACKAGE), 'lib/client.js')
+const UPSTREAM_VERSION = JSON.parse(fs.readFileSync(DSH_012_PACKAGE, 'utf8')).version
 const MANIFEST = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'))
 const LOCKFILE = JSON.parse(fs.readFileSync(path.join(ROOT, 'package-lock.json'), 'utf8'))
 
@@ -84,6 +85,8 @@ test('target: installed DSH stays inside the bounded Patch compatibility range',
   assert.ok(!semver.satisfies('0.1.1-rc.3', LEGACY_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(semver.satisfies('0.1.2-alpha.5', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
   assert.ok(!semver.satisfies('0.1.8-alpha.1', DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
+  assert.ok(semver.satisfies('0.2.0-rc.2', DSH_012_PATCHES[0].target.version))
+  assert.ok(!semver.satisfies('0.2.0-rc.3', DSH_012_PATCHES[0].target.version))
   for (const version of ['0.1.5-rc.2', '0.1.6-alpha.2', '0.1.7-rc.2']) {
     assert.ok(semver.satisfies(version, DSH_012_PATCHES[0].target.version, { includePrerelease: true }))
     assert.ok(semver.satisfies(version, MANIFEST.peerDependencies['@deepseek-ai/dsh-client-ui-chat']))
@@ -114,11 +117,11 @@ test('release: npm publication gates an idempotent GitHub Release', () => {
 })
 
 test('provider: native settings schema exposes every summary metric with the intended defaults', () => {
-  deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.1')
+  deepEqual(MANIFEST.dependencies['@deepseek-ai/schemastery'], '^3.18.4')
   deepEqual(MANIFEST.peerDependencies, {
-    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
-    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
-    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0',
+    '@deepseek-ai/dsh-client-ui-chat': '>=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0 || 0.2.0-rc.2',
+    '@deepseek-ai/dsh-client-ui-conversation': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0 || 0.2.0-rc.2',
+    '@deepseek-ai/dsh-settings': '>=0.1.0-rc.8 <=0.1.1-rc.2 || >=0.1.2-alpha.5 <0.1.3-0 || >=0.1.3-0 <0.1.4-0 || >=0.1.4-0 <0.1.5-0 || >=0.1.5-0 <0.1.6-0 || >=0.1.6-0 <0.1.7-0 || >=0.1.7-0 <0.1.8-0 || 0.2.0-rc.2',
     'dsh-harmony': '^0.8.11',
   })
   deepEqual(MANIFEST.peerDependenciesMeta, {
@@ -135,8 +138,8 @@ test('provider: native settings schema exposes every summary metric with the int
   assert.ok(semver.satisfies('0.8.11', MANIFEST.peerDependencies['dsh-harmony']))
   assert.ok(!semver.satisfies('0.9.0', MANIFEST.peerDependencies['dsh-harmony']))
   const hostConfig = require(path.join(ROOT, 'index.cjs')).Config
-  deepEqual(hostConfig({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
-  deepEqual(hostConfig['~standard'].validate({}).value, { summaryFields: DEFAULT_SUMMARY_FIELDS })
+  deepEqual(hostConfig({}).summaryFields.get(), DEFAULT_SUMMARY_FIELDS)
+  deepEqual(hostConfig['~standard'].validate({}).value.summaryFields.get(), DEFAULT_SUMMARY_FIELDS)
   assert.ok(hostConfig['~standard'].validate({ summaryFields: ['unknown'] }).issues)
   deepEqual(SUMMARY_FIELDS, [
     'duration',
@@ -172,7 +175,22 @@ test('provider: host entry registers the dsh-turn-fold settings namespace', () =
   }, config)
   deepEqual(registration.namespace, 'dsh-turn-fold')
   deepEqual(registration.schema({}), { summaryFields: DEFAULT_SUMMARY_FIELDS })
-  deepEqual(registration.options, { base: config })
+  deepEqual(registration.options, { base: { summaryFields: ['duration', 'reasoningTokens'] } })
+})
+
+test('provider: rc.2 projects volatile fields and owns its native page policy', () => {
+  const provider = require(path.join(ROOT, 'index.cjs'))
+  const schema = provider.Config
+  assert.ok(schema.dict.summaryFields.meta.volatile)
+  let configured
+  const fiber = {}
+  provider.apply({ fiber, inject(services, start) {
+    deepEqual(services, ['settings'])
+    start({ effect(start) { return start() }, settings: {
+      configure(options, owner) { configured = { options, owner }; return () => {} },
+    } })
+  } }, schema({}))
+  deepEqual(configured, { options: { auto: false }, owner: fiber })
 })
 
 test('provider: host entry loads while the ESM settings graph is still importing', () => {
@@ -214,7 +232,7 @@ let transformedSource = targetSource
 for (const patch of LEGACY_PATCHES) transformedSource = applyPatch(transformedSource, patch)
 const dsh012TargetSource = fs.readFileSync(DSH_012_PATH, 'utf8')
 let dsh012TransformedSource = dsh012TargetSource
-for (const patch of DSH_012_PATCHES) dsh012TransformedSource = applyPatch(dsh012TransformedSource, patch, DSH_012_PATH)
+for (const patch of PATCHES.createPatches(UPSTREAM_VERSION)) dsh012TransformedSource = applyPatch(dsh012TransformedSource, patch, DSH_012_PATH)
 
 test('selectors: injected runtime does not re-match the render-loop selector', () => {
   for (const patch of [LEGACY_PATCHES[1], DSH_012_PATCHES[1]]) {
@@ -240,7 +258,7 @@ test('transform: final browser bundle parses without syntax errors', () => {
 test('transform: modern DSH chat bundle uses the new renderer seam and parses', () => {
   const sf = sourceFile('client-012.patched.js', dsh012TransformedSource)
   deepEqual(sf.parseDiagnostics.length, 0)
-  assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline, sessionId, renderNode: \(nodeKey\) =>/)
+  assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline: (?:timeline|__ch4acko3DshTurnFoldTimeline), sessionId, renderNode: \(nodeKey\) =>/)
   assert.match(dsh012TransformedSource, /ChatNodeSeat, \{ \.\.\.\(\{/)
   assert.match(dsh012TransformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
 })
@@ -293,7 +311,8 @@ function compactTokens(value) {
   return String(value)
 }
 
-function buildRuntime(react, jsxRuntime) {
+function buildRuntime(react, jsxRuntime, modern = false, durationFormatter = formatDuration) {
+  const INLINE = PATCHES.runtimeSource(modern ? '0.2.0-rc.2' : '0.1.2-alpha.5')
   const ReasoningRow = ({ text }) => jsxRuntime.jsx('div', { 'data-test-reasoning': text, children: text })
   const uiPrimitives = {
     DisclosureRow({ icon, title, collapsedContent, open, onToggle, children, ...props }) {
@@ -310,6 +329,12 @@ function buildRuntime(react, jsxRuntime) {
     IconChevronDownOutline14: ({ className }) => jsxRuntime.jsx('span', { className, 'data-test-settings-chevron': '' }),
     StateDot: ({ state }) => jsxRuntime.jsx('span', { 'data-test-state-dot': state }),
   }
+  if (modern) {
+    uiPrimitives.IconApiOutlineRegular = uiPrimitives.IconApiOutline14
+    uiPrimitives.IconChevronDownOutlineRegular = uiPrimitives.IconChevronDownOutline14
+    delete uiPrimitives.IconApiOutline14
+    delete uiPrimitives.IconChevronDownOutline14
+  }
   const factory = new Function(
     'react',
     'react_jsx_runtime',
@@ -319,7 +344,7 @@ function buildRuntime(react, jsxRuntime) {
     '_deepseek_ai_dsh_client_ui_primitives',
     `${INLINE}\nreturn { render: __ch4acko3DshTurnFoldRender, disclosure: __ch4acko3DshTurnFoldDisclosure, activityGroup: __ch4acko3DshTurnFoldActivityGroup, summary: __ch4acko3DshTurnFoldSummary, chevron: __ch4acko3DshTurnFoldChevron, settingsCard: __ch4acko3DshTurnFoldSettingsCard, insertionIndex: __ch4acko3DshTurnFoldInsertionIndex, dropDestination: __ch4acko3DshTurnFoldDropDestination, metrics: __ch4acko3DshTurnFoldPlanMetrics, usage: __ch4acko3DshTurnFoldUsage, interactionKeys: __ch4acko3DshTurnFoldInteractionKeys, install: __ch4acko3DshTurnFoldInstall };`,
   )
-  const runtime = factory(react, jsxRuntime, ReasoningRow, formatDuration, compactTokens, uiPrimitives)
+  const runtime = factory(react, jsxRuntime, ReasoningRow, durationFormatter, compactTokens, uiPrimitives)
   let locale = 'en'
   let registered
   let settings = { summaryFields: DEFAULT_SUMMARY_FIELDS }
@@ -327,7 +352,7 @@ function buildRuntime(react, jsxRuntime) {
   let settingsSnapshot
   const settingsListeners = new Set()
   const registeredSlots = []
-  runtime.install({
+  const context = {
     effect(start) {
       return start()
     },
@@ -361,7 +386,7 @@ function buildRuntime(react, jsxRuntime) {
     },
     slots: {
       inject(name, start) {
-        deepEqual(name, 'settings.plugin.item')
+        deepEqual(name, modern ? 'settings.plugins.tab' : 'settings.plugin.item')
         start()
       },
       register(options, component) {
@@ -369,7 +394,16 @@ function buildRuntime(react, jsxRuntime) {
         return () => {}
       },
     },
-  })
+  }
+  if (modern) {
+    const bind = context.settingsScope.bind
+    context.configForms = { get(namespace) {
+      deepEqual(namespace, 'ch4acko3-dsh-turn-fold')
+      return bind({ decode: value => value })
+    } }
+    delete context.settingsScope
+  }
+  runtime.install(context)
   runtime.setLocale = (next) => {
     locale = next
   }
@@ -382,7 +416,28 @@ function buildRuntime(react, jsxRuntime) {
   return runtime
 }
 
-function buildSandbox() {
+if (process.env.DSH_TURN_FOLD_UPSTREAM_ROOT) test('target: runtime components exist in the selected upstream primitive exports', () => {
+  const manifestPath = require.resolve('@deepseek-ai/dsh-client-ui-primitives/package.json', { paths: [process.env.DSH_TURN_FOLD_UPSTREAM_ROOT || ROOT] })
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+  const sf = sourceFile('primitives.js', fs.readFileSync(path.join(path.dirname(manifestPath), manifest.main), 'utf8'))
+  const exports = new Set(tsquery(sf, 'ExportSpecifier').map(node => node.name.text))
+  const names = [...PATCHES.runtimeSource(UPSTREAM_VERSION).matchAll(/_deepseek_ai_dsh_client_ui_primitives\.([A-Za-z0-9_]+)/g)].map(match => match[1])
+  for (const name of names) assert.ok(exports.has(name), `upstream ${manifest.version} does not export ${name}`)
+})
+
+test('transform: chat timeline resolves from the native hook when the upstream local binding is absent', () => {
+  const sf = sourceFile('chat-timeline.patched.js', dsh012TransformedSource)
+  const [chatView] = tsquery(sf, 'FunctionDeclaration[name.name="ChatView"]')
+  const [render] = tsquery(chatView, 'CallExpression[expression.name="__ch4acko3DshTurnFoldRender"]')
+  const timeline = render.arguments[0].properties.find(property => property.name?.getText(sf) === 'timeline')
+  assert.ok(timeline && ts.isPropertyAssignment(timeline))
+  const declaration = chatView.body.statements.find(statement => statement.declarationList?.declarations.some(item => item.name.getText(sf) === '__ch4acko3DshTurnFoldTimeline'))
+  const resolve = new Function('useChat', 'timeline', `${declaration ? declaration.getText(sf) : ''}\nreturn ${timeline.initializer.getText(sf)};`)
+  const expected = { turns: new Map(), turnOrder: [], playbackClock: { kind: 'historical', time: 1234 } }
+  assert.strictEqual(resolve(selector => selector({ timeline: expected }), expected), expected)
+})
+
+function buildSandbox(durationFormatter = formatDuration) {
   const jsx = (type, props, key) => ({ __el: 'jsx', type, props: props || {}, key })
   const jsxs = (type, props, key) => ({ __el: 'jsxs', type, props: props || {}, key })
   const ChatNodeSeat = { __seat: true }
@@ -398,7 +453,7 @@ function buildSandbox() {
       return getSnapshot()
     },
   }
-  const runtime = buildRuntime(react, { jsx, jsxs })
+  const runtime = buildRuntime(react, { jsx, jsxs }, false, durationFormatter)
   const renderCalls = []
   const renderNode = (key) => {
     renderCalls.push(key)
@@ -829,6 +884,20 @@ test('activity groups: failure count is visible without expanding', () => {
   deepEqual(group.props.children[1].props['aria-hidden'], true)
 })
 
+test('summary: the actual upstream duration formatter renders localized time without object coercion', () => {
+  const sf = sourceFile('native-duration.js', fs.readFileSync(DSH_012_PATH, 'utf8'))
+  const [formatter] = tsquery(sf, 'FunctionDeclaration[name.name="formatRunDuration"]')
+  assert.ok(formatter)
+  const nativeDuration = new Function(`${formatter.getText(sf)}; return formatRunDuration;`)()
+  const { api } = buildSandbox(nativeDuration)
+  api.setLocale('zh')
+  api.setSummaryFields(['duration'])
+  const units = { 'duration.hourUnit': '小时', 'duration.minuteUnit': '分', 'duration.secondUnit': '秒' }
+  const result = api.summary({ metrics: { durationMs: 84000 }, completed: true, running: false,
+    t: (key, params) => units[key] ?? (key === 'duration.minutes' ? `${params.minutes}分${params.seconds}秒` : `${params.seconds}秒`) })
+  deepEqual(elementText(result.props.children[0].props.children), '耗时 1 分 24 秒')
+})
+
 test('summary: native locale translation distinguishes completed, stopped, and interrupted turns in Chinese', () => {
   const { api } = buildSandbox()
   const completedEnglish = api.summary({
@@ -945,6 +1014,32 @@ test('settings: browser runtime contributes a native plugin-settings card for it
   deepEqual(api.registeredSlots.length, 1)
   deepEqual(api.registeredSlots[0].options, { name: 'settings.plugin.item', key: 'dsh-turn-fold' })
   deepEqual(api.registeredSlots[0].component, api.settingsCard)
+})
+
+test('provider: ESM entry resolves its live Config alongside the settings graph', () => {
+  const script = `Promise.all([import('@deepseek-ai/dsh-settings'), import('./index.mjs')]).then(([, provider]) => {
+    const fields = provider.Config({}).summaryFields.get()
+    if (fields.length !== ${DEFAULT_SUMMARY_FIELDS.length}) throw new Error('missing live defaults')
+  }).catch(error => { console.error(error); process.exitCode = 1 })`
+  const result = spawnSync(process.execPath, ['-e', script], { cwd: ROOT, encoding: 'utf8' })
+  deepEqual(result.status, 0, result.stderr || result.stdout)
+})
+
+test('settings: rc.2 uses configuration forms and a labelled Plugins tab', () => {
+  const api = buildRuntime(React, reactJsxRuntime, true)
+  const registration = api.registeredSlots[0]
+  deepEqual(registration.options.name, 'settings.plugins.tab')
+  deepEqual(registration.options.id, 'dsh-turn-fold')
+  deepEqual(registration.options.label(), 'Turn Fold')
+  let rendered
+  TestRenderer.act(() => { rendered = TestRenderer.create(React.createElement(api.settingsCard)) })
+  assert.ok(rendered.toJSON())
+  TestRenderer.act(() => { rendered.root.findByType('button').props.onClick() })
+  TestRenderer.act(() => { api.setSummaryFields(['duration']) })
+  deepEqual(rendered.root.findAllByProps({ 'data-selected': 'true' }).map(tag => tag.props['data-field']), ['duration'])
+  TestRenderer.act(() => { rendered.root.findAllByProps({ 'data-selected': 'false' }).find(tag => tag.props['data-field'] === 'reasoningTokens').props.onClick() })
+  deepEqual(rendered.root.findAllByProps({ 'data-selected': 'true' }).map(tag => tag.props['data-field']), ['duration', 'reasoningTokens'])
+  TestRenderer.act(() => { rendered.unmount() })
 })
 
 test('settings: owner link requires a deliberate pointer hover before navigation', () => {

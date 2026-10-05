@@ -138,7 +138,10 @@ function __ch4acko3DshTurnFoldPublishSettings(fields) {
 function __ch4acko3DshTurnFoldInstall(ctx) {
   ctx.effect(function () { return ctx.locale.register(__ch4acko3DshTurnFoldLocaleNamespace, __ch4acko3DshTurnFoldDictionaries); }, "@ch4acko3/dsh-turn-fold: dictionaries");
   __ch4acko3DshTurnFoldTranslate = ctx.locale.bind(__ch4acko3DshTurnFoldLocaleNamespace);
-  var scope = ctx.settingsScope.bind({ namespace: __ch4acko3DshTurnFoldSettingsNamespace, decode: __ch4acko3DshTurnFoldDecodeSettings });
+  var modern = typeof ctx.configForms !== "undefined";
+  var scope = modern
+    ? ctx.configForms.get("ch4acko3-dsh-turn-fold")
+    : ctx.settingsScope.bind({ namespace: __ch4acko3DshTurnFoldSettingsNamespace, decode: __ch4acko3DshTurnFoldDecodeSettings });
   __ch4acko3DshTurnFoldSettingsScope = scope;
   function publish() {
     var snapshot = scope.getSnapshot();
@@ -146,10 +149,11 @@ function __ch4acko3DshTurnFoldInstall(ctx) {
   }
   ctx.effect(function () { return scope.subscribe(publish); }, "@ch4acko3/dsh-turn-fold: settings");
   publish();
-  ctx.slots.inject("settings.plugin.item", function () {
+  var slot = modern ? "settings.plugins.tab" : "settings.plugin.item";
+  ctx.slots.inject(slot, function () {
     return ctx.slots.register({
-      name: "settings.plugin.item",
-      key: __ch4acko3DshTurnFoldSettingsNamespace
+      name: slot,
+      ...(modern ? { id: __ch4acko3DshTurnFoldSettingsNamespace, label: function () { return __ch4acko3DshTurnFoldText("settings.title"); } } : { key: __ch4acko3DshTurnFoldSettingsNamespace })
     }, __ch4acko3DshTurnFoldSettingsCard);
   });
 }
@@ -468,8 +472,9 @@ function __ch4acko3DshTurnFoldSettingsCard() {
     if (next.length === fields.length && next.every(function (field, index) { return field === fields[index]; })) return;
     setPending(true);
     setFailed(false);
-    scope.set("summaryFields", next).then(function () {
+    scope.set("summaryFields", next).then(function (accepted) {
       setPending(false);
+      if (accepted === false) setFailed(true);
     }, function () {
       setPending(false);
       setFailed(true);
@@ -714,6 +719,12 @@ function __ch4acko3DshTurnFoldLiveDuration(metrics, running) {
   return metrics.durationMs;
 }
 function __ch4acko3DshTurnFoldSpacedDuration(value) {
+  // rc.2 exposes numeric/unit segments; earlier hosts return one string.
+  if (Array.isArray(value)) value = value.map(function (part) {
+    if (part === null || typeof part !== "object" || typeof part.text !== "string") throw new Error("@ch4acko3/dsh-turn-fold: unsupported native duration segment");
+    return part.text;
+  }).join("");
+  if (typeof value !== "string") throw new Error("@ch4acko3/dsh-turn-fold: unsupported native duration format");
   return value.replace(/(\d)(?=(?:小时|分钟|秒|分|时))/g, "$1 ").replace(/(小时|分钟|秒|分|时)(?=\d)/g, "$1 ");
 }
 function __ch4acko3DshTurnFoldAnimatedPart(field, key, parameter, display, animationKey, qualifier) {

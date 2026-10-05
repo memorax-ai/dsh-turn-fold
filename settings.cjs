@@ -52,6 +52,15 @@ Object.defineProperty(Config, '~standard', {
 })
 
 let settingsSchema
+let configSchema
+function createConfigSchema() {
+  if (configSchema !== undefined) return configSchema
+  const z = require('@deepseek-ai/schemastery')
+  configSchema = z.object({
+    summaryFields: z.array(z.union(SUMMARY_FIELDS)).default(DEFAULT_SUMMARY_FIELDS).volatile(),
+  })
+  return configSchema
+}
 function createSettingsSchema() {
   if (settingsSchema !== undefined) return settingsSchema
   // The Host loads CommonJS providers alongside the ESM settings graph. Defer
@@ -66,6 +75,7 @@ function createSettingsSchema() {
 module.exports = {
   Config,
   createSettingsSchema,
+  createConfigSchema,
   DEFAULT_SUMMARY_FIELDS,
   SETTINGS_NAMESPACE,
   SUMMARY_FIELDS,

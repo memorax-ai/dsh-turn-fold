@@ -91,3 +91,5 @@ git push --follow-tags
 ```
 
 Compatibility checks cover the real `0.1.5-rc.2`, `0.1.6-alpha.2`, and `0.1.7-rc.2` bundles. Run `npm test` with `DSH_TURN_FOLD_UPSTREAM_ROOT` pointing to an isolated DSH installation to exercise that chat bundle. Exact selector counts remain required.
+
+DSH `0.2.0-rc.2` is also supported explicitly. Its runtime uses `configForms`, a Plugins settings tab, live configuration fields, and the renamed native icons. Turn Fold reads the timeline through the native chat hook when the renderer has no local timeline binding, and accepts the native duration formatter's numeric/unit segments. Windows browser checks cover combined startup with Bites, editing metrics, persistence across a Host restart, and replaying a synthetic two-turn session written through native session persistence. Seeking back hides later turns, playback disables input, and exiting restores input. This does not cover real model calls or browser interactions on macOS/Linux. The `0.2` range is limited to this tested release.
