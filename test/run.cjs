@@ -887,8 +887,9 @@ test('activity groups: failure count is visible without expanding', () => {
 test('summary: the actual upstream duration formatter renders localized time without object coercion', () => {
   const sf = sourceFile('native-duration.js', fs.readFileSync(DSH_012_PATH, 'utf8'))
   const [formatter] = tsquery(sf, 'FunctionDeclaration[name.name="formatRunDuration"]')
+  const [pad2] = tsquery(sf, 'FunctionDeclaration[name.name="pad2"]')
   assert.ok(formatter)
-  const nativeDuration = new Function(`${formatter.getText(sf)}; return formatRunDuration;`)()
+  const nativeDuration = new Function(`${pad2 ? pad2.getText(sf) : ''}\n${formatter.getText(sf)}; return formatRunDuration;`)()
   const { api } = buildSandbox(nativeDuration)
   api.setLocale('zh')
   api.setSummaryFields(['duration'])

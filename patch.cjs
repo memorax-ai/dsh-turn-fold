@@ -46,8 +46,8 @@ function target(packageName, version) {
 }
 
 function runtimeSource(version) {
-  const [major, minor] = version.split('.').map(Number)
-  const modern = major > 0 || minor >= 2
+  const [major, minor, patch] = version.split('.').map(part => Number.parseInt(part, 10))
+  const modern = major > 0 || minor > 1 || (minor === 1 && patch >= 7)
   let source = INLINE.replace('var modern = typeof ctx.configForms !== "undefined";', `var modern = ${modern};`)
   if (modern) source = source
     .replaceAll('IconApiOutline14', 'IconApiOutlineRegular')
