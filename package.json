@@ -1,6 +1,6 @@
 {
   "name": "@ch4acko3/dsh-turn-fold",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Codex-style turn folding for the DSH WebUI conversation, implemented as a dsh-harmony provider.",
   "main": "./index.mjs",
   "engines": {

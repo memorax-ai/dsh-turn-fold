@@ -16,7 +16,7 @@ https://github.com/user-attachments/assets/3c9dfdcf-a454-4750-9edf-76771ed5a9a6
 
 ## 工作原理
 
-在带原生消息折叠的新版 DSH 中，Turn Fold 会接管折叠：移除原生执行过程折叠栏，关闭节点内部的原生折叠，只保留插件的回合摘要和活动分组。按聊天渲染器是否提供 `compactTranscript` 判断能力，不依赖 CLI 版本号。原生思考、工具和上下文内容仍由 DSH 渲染，已保存的原生显示偏好不变；停用插件后恢复原生折叠。
+在带原生消息折叠的新版 DSH 中，Turn Fold 会接管折叠：移除原生执行过程折叠栏，关闭节点内部的原生折叠，只保留插件的回合摘要和活动分组。按聊天渲染器是否提供 `compactTranscript` 或 `usePresentation` 判断能力，不依赖 CLI 版本号。原生思考、工具和上下文内容仍由 DSH 渲染，已保存的原生显示偏好不变；停用插件后恢复原生折叠。
 
 三个带形状校验的 Source Patch 会在内存中修改编译后的浏览器包：DSH `0.1.0-rc.8` 至 `0.1.1-rc.2` 使用 `@deepseek-ai/dsh-client-ui-conversation`，DSH `0.1.2-alpha.5` 至 `0.1.7` 版本线（含预发布版）则跟随渲染器迁移到 `@deepseek-ai/dsh-client-ui-chat`。它们不会修改已安装的 DSH 文件。每条选择器仍必须恰好命中一次，因此遇到不兼容的编译形状时会停止应用，而不会修改不确定的目标。
 

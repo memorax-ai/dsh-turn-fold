@@ -264,7 +264,7 @@ test('transform: modern DSH chat bundle uses the new renderer seam and parses', 
 })
 
 function patchedListProps(nativeProps, bindings) {
-  const source = `function ChatView() { const timeline = inputTimeline; return jsx(ChatNodeList, { order, ...nativeProps${nativeProps.compactTranscript === undefined ? '' : ', compactTranscript: nativeProps.compactTranscript'} }); }`
+  const source = `function ChatView() { const timeline = inputTimeline; const usePresentation = nativeProps.usePresentation; return jsx(ChatNodeList, { order, ...nativeProps${nativeProps.usePresentation ? ', usePresentation' : nativeProps.compactTranscript === undefined ? '' : ', compactTranscript: nativeProps.compactTranscript'} }); }`
   const patched = applyPatch(source, DSH_012_PATCHES[1], DSH_012_PATH)
   return new Function(...Object.keys(bindings), 'nativeProps', 'jsx', '__ch4acko3DshTurnFoldRender', 'inputTimeline', `${patched}; return ChatView()`)(
     ...Object.values(bindings), nativeProps, reactJsxRuntime.jsx, (props) => props, bindings.timeline,
@@ -297,13 +297,28 @@ test('transform: older chat renderers retain their original order and props', ()
   deepEqual(props.renderNode('tool-call').props.extensionMarker, 'preserved')
 })
 
+test('transform: presentation policy takeover preserves unrelated policy and user preference', () => {
+  const policy = { foldCompletedTurns: true, showContext: true }
+  const props = patchedListProps({ usePresentation: (select) => select(policy) }, {
+    order: ['process', 'answer'], nodeStore: new Map([['process', { kind: 'turn-process' }], ['answer', { kind: 'assistant-step' }]]),
+    timeline: {}, sessionId: 'policy', t: () => '', ChatNodeSeat: 'seat',
+  })
+  deepEqual(props.order, ['answer'])
+  deepEqual(props.renderNode('answer').props.usePresentation(value => value), { foldCompletedTurns: false, showContext: true })
+  deepEqual(policy.foldCompletedTurns, true)
+})
+
 // Exercise the installed native visibility implementation when testing a bundle
 // that ships it; the older supported bundle has no such visibility layer.
 if (dsh012TargetSource.includes('const TURN_PROCESS_INDEPENDENT_KINDS')) {
   test('native folding: patched seats reveal tools, context and answer reasoning even when native state is closed', () => {
     const sf = sourceFile(DSH_012_PATH, dsh012TargetSource)
+    const [seat] = tsquery(sf, 'VariableDeclaration[name.name="ChatNodeSeat"]')
+    const seatSource = seat.getText(sf)
+    const turnOfName = /const turn = (turnOf(?:\$\d+)?)\(/.exec(seatSource)[1]
+    const hasPresentation = seatSource.includes('usePresentation')
     const declarations = [
-      ...['turnDataOf', 'turnOf', 'storedTurnProcessEntry', 'useSearchableHidden'].map((name) => `FunctionDeclaration[name.name="${name}"]`),
+      ...['turnDataOf', turnOfName, 'storedTurnProcessEntry', 'useSearchableHidden', ...(hasPresentation ? ['turnProcessAlwaysOpen'] : [])].map((name) => `FunctionDeclaration[name.name="${name}"]`),
       'VariableDeclaration[name.name="TURN_PROCESS_INDEPENDENT_KINDS"]',
       'VariableDeclaration[name.name="ChatNodeSeat"]',
     ].map((selector) => {
@@ -312,8 +327,9 @@ if (dsh012TargetSource.includes('const TURN_PROCESS_INDEPENDENT_KINDS')) {
       const node = matches[0]
       return `${ts.isVariableDeclaration(node) ? 'const ' : ''}${node.getText(sf)};`
     }).join('\n')
-    const ChatNodeSeat = new Function('react', 'react_jsx_runtime', 'ChatView_module_css_default', '_deepseek_ai_dsh_client_ui_primitives', `${declarations}\nreturn ChatNodeSeat`)(
+    const ChatNodeSeat = new Function('react', 'react_jsx_runtime', 'ChatView_module_css_default', '_deepseek_ai_dsh_client_ui_primitives', '_deepseek_ai_dsh_client_store', `${declarations}\nreturn ChatNodeSeat`)(
       React, reactJsxRuntime, { flowItem: 'flow-item' }, { JsonBlock: () => null },
+      { createSnapshotStore: (initial) => ({ getSnapshot: () => initial, set() { throw new Error('visible nodes must not reset disclosure state') } }) },
     )
     const nodeStore = new Map(['context', 'tool-call', 'assistant-step', 'turn-process'].map((kind, index) => [kind, {
       key: kind, kind, anchorSeq: index + 1, data: { step: 2 }, location: { kind: 'step', turn: { turn: 1, data: {} } },
@@ -321,6 +337,7 @@ if (dsh012TargetSource.includes('const TURN_PROCESS_INDEPENDENT_KINDS')) {
     const spec = { turn: 1, processStartSeq: 1, answerAnchorSeq: 3, answerStep: 2, inlineReasoning: true }
     const nativeProps = {
       compactTranscript: true, historyIncomplete: false,
+      ...(hasPresentation ? { usePresentation: (select) => select({ foldCompletedTurns: true }) } : {}),
       useChatNode: (key) => nodeStore.get(key),
       useChatNodeProcess: () => ({ spec, turn: 1, turnClosed: true, hasExternalProcess: true, compactAnswer: true }),
       useStore: (select) => select({ turnProcesses: [] }),

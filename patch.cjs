@@ -121,9 +121,12 @@ function dsh012Patches(version) {
       if (!hasTimeline) edit.prependLeft(chatView.body.getStart(sourceFile) + 1, '\nconst __ch4acko3DshTurnFoldTimeline = useChat((snapshot) => snapshot.timeline);\n')
       // Newer ChatNodeSeat hides process nodes independently of Turn Fold.
       // Take over both its visibility flag and its synthetic disclosure row.
-      const hasNativeFolding = props.properties.some((property) => property.name?.getText(sourceFile) === 'compactTranscript')
+      const hasPresentation = props.properties.some((property) => property.name?.getText(sourceFile) === 'usePresentation')
+      const hasNativeFolding = hasPresentation || props.properties.some((property) => property.name?.getText(sourceFile) === 'compactTranscript')
       const order = hasNativeFolding ? 'order: order.filter((key) => nodeStore.get(key)?.kind !== "turn-process")' : 'order'
-      const foldingProps = hasNativeFolding ? 'compactTranscript: false, ' : ''
+      const foldingProps = hasPresentation
+        ? 'usePresentation: (select) => usePresentation((policy) => select({ ...policy, foldCompletedTurns: false })), '
+        : hasNativeFolding ? 'compactTranscript: false, ' : ''
       edit.overwrite(
         node.getStart(sourceFile),
         node.getEnd(),

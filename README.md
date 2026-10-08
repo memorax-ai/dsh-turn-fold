@@ -37,7 +37,7 @@ short open/close transition that unmounts the activity after it closes.
 On DSH versions with native message folding, Turn Fold takes over: it removes
 the native process disclosure and disables native node folding, leaving the
 plugin's turn summary and activity groups in control. Support is detected from
-the chat renderer's `compactTranscript` prop rather than the CLI version.
+the chat renderer's `compactTranscript` or `usePresentation` prop rather than the CLI version.
 DSH still renders reasoning, tools, and context. Saved native display preferences
 are unchanged, so disabling the plugin restores native folding.
 
