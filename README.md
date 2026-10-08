@@ -34,6 +34,13 @@ short open/close transition that unmounts the activity after it closes.
 
 ## How it works
 
+On DSH versions with native message folding, Turn Fold takes over: it removes
+the native process disclosure and disables native node folding, leaving the
+plugin's turn summary and activity groups in control. Support is detected from
+the chat renderer's `compactTranscript` prop rather than the CLI version.
+DSH still renders reasoning, tools, and context. Saved native display preferences
+are unchanged, so disabling the plugin restores native folding.
+
 Three shape-guarded Source Patches run in memory against the compiled browser
 bundle. For DSH `0.1.0-rc.8` through `0.1.1-rc.2`, they target
 `@deepseek-ai/dsh-client-ui-conversation`; for DSH `0.1.2-alpha.5` through the

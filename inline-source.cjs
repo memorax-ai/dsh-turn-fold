@@ -772,7 +772,7 @@ function __ch4acko3DshTurnFoldSummaryParts(metrics, running, settled, completed,
     } else if (field === "tokensPerSecond") {
       if (typeof value === "number") parts.push({ field: field, text: __ch4acko3DshTurnFoldText("summary.tokensPerSecond", { count: value >= 10 ? Math.round(value) : Math.round(value * 10) / 10 }) });
     } else if (typeof value === "number") {
-      parts.push(__ch4acko3DshTurnFoldCountPart(field, "summary." + field, value, formatTokens(value), metrics.tokenUsagePartial && settled ? "≥ " : ""));
+      parts.push(__ch4acko3DshTurnFoldCountPart(field, "summary." + field, value, formatTokens(value, durationT), metrics.tokenUsagePartial && settled ? "≥ " : ""));
     }
   }
   return parts.length === 0 ? [{ field: "activity", text: __ch4acko3DshTurnFoldText("summary.activity") }] : parts;

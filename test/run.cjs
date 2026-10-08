@@ -258,10 +258,88 @@ test('transform: final browser bundle parses without syntax errors', () => {
 test('transform: modern DSH chat bundle uses the new renderer seam and parses', () => {
   const sf = sourceFile('client-012.patched.js', dsh012TransformedSource)
   deepEqual(sf.parseDiagnostics.length, 0)
-  assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order, nodeStore, timeline: (?:timeline|__ch4acko3DshTurnFoldTimeline), sessionId, renderNode: \(nodeKey\) =>/)
+  assert.match(dsh012TransformedSource, /__ch4acko3DshTurnFoldRender\(\{ order(?:,|: order\.filter\()/)
   assert.match(dsh012TransformedSource, /ChatNodeSeat, \{ \.\.\.\(\{/)
   assert.match(dsh012TransformedSource, /const t = ctx\.locale\.bind\(NS\);\s+__ch4acko3DshTurnFoldInstall\(ctx\);/)
 })
+
+function patchedListProps(nativeProps, bindings) {
+  const source = `function ChatView() { const timeline = inputTimeline; return jsx(ChatNodeList, { order, ...nativeProps${nativeProps.compactTranscript === undefined ? '' : ', compactTranscript: nativeProps.compactTranscript'} }); }`
+  const patched = applyPatch(source, DSH_012_PATCHES[1], DSH_012_PATH)
+  return new Function(...Object.keys(bindings), 'nativeProps', 'jsx', '__ch4acko3DshTurnFoldRender', 'inputTimeline', `${patched}; return ChatView()`)(
+    ...Object.values(bindings), nativeProps, reactJsxRuntime.jsx, (props) => props, bindings.timeline,
+  )
+}
+
+test('transform: takes over native folding without changing stored preferences or node data', () => {
+  const nodeStore = new Map(['user', 'tool-call', 'assistant-step', 'turn-process'].map((kind) => [kind, { kind }]))
+  const order = [...nodeStore.keys()]
+  const bindings = { order, nodeStore, timeline: {}, sessionId: 'takeover', t: () => '', ChatNodeSeat: 'seat' }
+  for (const compactTranscript of [true, false]) {
+    const nativeProps = { compactTranscript, extensionMarker: 'preserved' }
+    const props = patchedListProps(nativeProps, bindings)
+    deepEqual(props.order, ['user', 'tool-call', 'assistant-step'])
+    deepEqual(props.renderNode('tool-call').props.compactTranscript, false)
+    deepEqual(props.renderNode('tool-call').props.extensionMarker, 'preserved')
+    deepEqual(nativeProps.compactTranscript, compactTranscript)
+    deepEqual(order, [...nodeStore.keys()])
+    deepEqual(props.nodeStore, nodeStore)
+  }
+})
+
+test('transform: older chat renderers retain their original order and props', () => {
+  const order = ['user', 'tool-call', 'assistant-step']
+  const props = patchedListProps({ extensionMarker: 'preserved' }, {
+    order, nodeStore: new Map(), timeline: {}, sessionId: 'older', t: () => '', ChatNodeSeat: 'seat',
+  })
+  assert.strictEqual(props.order, order)
+  deepEqual(props.renderNode('tool-call').props.compactTranscript, undefined)
+  deepEqual(props.renderNode('tool-call').props.extensionMarker, 'preserved')
+})
+
+// Exercise the installed native visibility implementation when testing a bundle
+// that ships it; the older supported bundle has no such visibility layer.
+if (dsh012TargetSource.includes('const TURN_PROCESS_INDEPENDENT_KINDS')) {
+  test('native folding: patched seats reveal tools, context and answer reasoning even when native state is closed', () => {
+    const sf = sourceFile(DSH_012_PATH, dsh012TargetSource)
+    const declarations = [
+      ...['turnDataOf', 'turnOf', 'storedTurnProcessEntry', 'useSearchableHidden'].map((name) => `FunctionDeclaration[name.name="${name}"]`),
+      'VariableDeclaration[name.name="TURN_PROCESS_INDEPENDENT_KINDS"]',
+      'VariableDeclaration[name.name="ChatNodeSeat"]',
+    ].map((selector) => {
+      const matches = tsquery(sf, selector)
+      deepEqual(matches.length, 1)
+      const node = matches[0]
+      return `${ts.isVariableDeclaration(node) ? 'const ' : ''}${node.getText(sf)};`
+    }).join('\n')
+    const ChatNodeSeat = new Function('react', 'react_jsx_runtime', 'ChatView_module_css_default', '_deepseek_ai_dsh_client_ui_primitives', `${declarations}\nreturn ChatNodeSeat`)(
+      React, reactJsxRuntime, { flowItem: 'flow-item' }, { JsonBlock: () => null },
+    )
+    const nodeStore = new Map(['context', 'tool-call', 'assistant-step', 'turn-process'].map((kind, index) => [kind, {
+      key: kind, kind, anchorSeq: index + 1, data: { step: 2 }, location: { kind: 'step', turn: { turn: 1, data: {} } },
+    }]))
+    const spec = { turn: 1, processStartSeq: 1, answerAnchorSeq: 3, answerStep: 2, inlineReasoning: true }
+    const nativeProps = {
+      compactTranscript: true, historyIncomplete: false,
+      useChatNode: (key) => nodeStore.get(key),
+      useChatNodeProcess: () => ({ spec, turn: 1, turnClosed: true, hasExternalProcess: true, compactAnswer: true }),
+      useStore: (select) => select({ turnProcesses: [] }),
+      actions: { setTurnProcessOpen() { throw new Error('must not change native fold state') } },
+      renderSlot: (_slot, owner) => React.createElement('span', { 'data-foldable': owner.turnProcess.foldable }),
+      t: () => '',
+    }
+    let rendered
+    TestRenderer.act(() => { rendered = TestRenderer.create(React.createElement(ChatNodeSeat, { ...nativeProps, nodeKey: 'tool-call' })) })
+    deepEqual(rendered.root.findByType('div').props['data-turn-process-hidden'], true, 'baseline must reproduce native hiding')
+    const props = patchedListProps(nativeProps, { order: [...nodeStore.keys()], nodeStore, timeline: {}, sessionId: 'native', t: nativeProps.t, ChatNodeSeat })
+    for (const key of props.order) {
+      TestRenderer.act(() => rendered.update(props.renderNode(key)))
+      deepEqual(rendered.root.findByType('div').props['data-turn-process-hidden'], undefined, key)
+      deepEqual(rendered.root.findByType('span').props['data-foldable'], false, key)
+    }
+    TestRenderer.act(() => rendered.unmount())
+  })
+}
 
 test('target: closing-reasoning extraction stays bound to the native semantic row contract', () => {
   assert.match(targetSource, /function ReasoningRow\(/)
@@ -305,7 +383,8 @@ function formatDuration(ms, t) {
     : t('duration.seconds', { seconds })
 }
 
-function compactTokens(value) {
+function compactTokens(value, t) {
+  if (value >= 1000 && typeof t !== 'function') throw new TypeError('native formatTokens requires the locale translator')
   if (value >= 1e6) return `${Math.round(value / 1e5) / 10}M`
   if (value >= 1e3) return `${Math.round(value / 100) / 10}K`
   return String(value)
