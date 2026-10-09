@@ -52,6 +52,16 @@ function runtimeSource(version) {
   if (modern) source = source
     .replaceAll('IconApiOutline14', 'IconApiOutlineRegular')
     .replaceAll('IconChevronDownOutline14', 'IconChevronDownOutlineRegular')
+  if (minor >= 2 || major > 0) source = `function __ch4acko3DshTurnFoldReasoningRow(props) {
+  return react_jsx_runtime.jsx(ReasoningRow, {
+    ...props,
+    useDisclosure,
+    usePresentation: (select) => select({ settledReasoningPreview: false }),
+    renderSlot: (_name, content) => react_jsx_runtime.jsx(_deepseek_ai_dsh_client_ui_primitives.MarkdownText, {
+      text: content.text, streaming: content.running, labels: markdownLabels(props.t), variant: "compact"
+    })
+  });
+}\n` + source.replaceAll('react_jsx_runtime.jsx(ReasoningRow,', 'react_jsx_runtime.jsx(__ch4acko3DshTurnFoldReasoningRow,')
   return source
 }
 
@@ -137,7 +147,27 @@ function dsh012Patches(version) {
 }
 
 function createPatches(version) {
+  if (/^0\.2\.1-/.test(version)) return dsh021Patches(version)
   return usesUiChat(version) ? dsh012Patches(version) : legacyPatches()
+}
+
+function dsh021Patches(version) {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '0.2.1-alpha.2'), {
+    select: 'FunctionExpression[name.name="ChatFlow"]',
+    apply({ node, sourceFile, edit, query }) {
+      const rows = query('CallExpression[expression.name.name="map"][expression.expression.name="entries"]', node)
+      const flow = query('CallExpression').filter(call => call.expression.getText(sourceFile) === 'renderSlot' && call.arguments[0]?.getText(sourceFile) === '"conversation.chat.flow"')
+      if (rows.length !== 1 || flow.length !== 1) throw new Error('@ch4acko3/dsh-turn-fold: expected one ChatFlow render loop and slot')
+      const parameters = node.parameters[0].name
+      edit.prependLeft(parameters.getStart(sourceFile) + 1, 'sessionId, ')
+      edit.prependLeft(flow[0].arguments[1].getStart(sourceFile) + 1, 'sessionId, ')
+      edit.prependLeft(node.body.getStart(sourceFile) + 1, '\nconst order = useChat((snapshot) => snapshot.order);\nconst timeline = useChat((snapshot) => snapshot.timeline);\n')
+      const pending = query('CallExpression', node).find(call => call.expression.getText(sourceFile) === 'rows.splice')
+      if (!pending) throw new Error('@ch4acko3/dsh-turn-fold: pending input insertion is missing')
+      edit.overwrite(pending.arguments[0].getStart(sourceFile), pending.arguments[0].getEnd(), 'rows.length')
+      edit.overwrite(rows[0].getStart(sourceFile), rows[0].getEnd(), `__ch4acko3DshTurnFoldRender({ order: order.filter((key) => nodeStore.get(key)?.kind !== "turn-process"), nodeStore, timeline, sessionId, renderNode: (nodeKey) => (0, react.createElement)(ChatNodeSeat, { ...seatProps, usePresentation: (select) => usePresentation((policy) => select({ ...policy, foldCompletedTurns: false })), nodeKey, key: nodeKey }), t })`)
+    },
+  }, runtimeSource(version))
 }
 
 const patches = createPatches(activeDshVersion())
