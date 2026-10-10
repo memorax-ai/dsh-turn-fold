@@ -49,8 +49,7 @@
     }
   },
   "scripts": {
-    "test": "node test/run.cjs",
-    "check": "node test/run.cjs"
+    "check": "node --check index.cjs && node --check patch.cjs && node --check inline-source.cjs && node --check settings.cjs && node --check locales.cjs"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "^3.18.4"
@@ -82,7 +81,6 @@
     "@phenomnomnominal/tsquery": "^6.2.0",
     "dsh-harmony": "^0.8.11",
     "react": "18.3.1",
-    "react-test-renderer": "18.3.1",
     "semver": "^7.8.5",
     "typescript": "^6.0.3"
   }

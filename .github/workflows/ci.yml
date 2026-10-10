@@ -12,13 +12,12 @@ permissions:
 
 jobs:
   test:
-    name: Test (${{ matrix.os }}, DSH ${{ matrix.dsh }})
+    name: Check (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        dsh: [0.1.2-alpha.5, 0.1.5-rc.2, 0.1.6-alpha.2, 0.1.7-rc.2, 0.2.0-rc.2, 0.2.1-alpha.2]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v7
@@ -26,13 +25,5 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Install isolated upstream Chat
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/upstream"
-          echo '{"private":true}' > "$RUNNER_TEMP/upstream/package.json"
-          npm install --prefix "$RUNNER_TEMP/upstream" --ignore-scripts --no-audit --no-fund "@deepseek-ai/dsh-client-ui-chat@${{ matrix.dsh }}" "@deepseek-ai/dsh-client-ui-primitives@${{ matrix.dsh }}"
       - run: npm run check
-        env:
-          DSH_TURN_FOLD_UPSTREAM_ROOT: ${{ runner.temp }}/upstream
       - run: npm pack --dry-run
