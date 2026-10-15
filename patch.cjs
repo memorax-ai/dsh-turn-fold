@@ -152,7 +152,7 @@ function createPatches(version) {
 }
 
 function dsh021Patches(version) {
-  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '0.2.1-alpha.2 || 0.2.1-alpha.3'), {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4'), {
     select: 'FunctionExpression[name.name="ChatFlow"]',
     apply({ node, sourceFile, edit, query }) {
       const rows = query('CallExpression[expression.name.name="map"][expression.expression.name="entries"]', node)
