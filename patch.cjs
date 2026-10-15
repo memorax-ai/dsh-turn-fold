@@ -147,12 +147,12 @@ function dsh012Patches(version) {
 }
 
 function createPatches(version) {
-  if (/^0\.2\.1-/.test(version)) return dsh021Patches(version)
+  if (/^0\.2\.[1-9]\d*(?:-|$)/.test(version)) return dsh021Patches(version)
   return usesUiChat(version) ? dsh012Patches(version) : legacyPatches()
 }
 
 function dsh021Patches(version) {
-  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '0.2.1-alpha.2 || 0.2.1-alpha.3 || 0.2.1-alpha.4'), {
+  return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '>=0.2.1-alpha.2 <0.3.0-0'), {
     select: 'FunctionExpression[name.name="ChatFlow"]',
     apply({ node, sourceFile, edit, query }) {
       const rows = query('CallExpression[expression.name.name="map"][expression.expression.name="entries"]', node)
