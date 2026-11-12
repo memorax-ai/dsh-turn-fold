@@ -154,9 +154,12 @@ function createPatches(version) {
 function dsh021Patches(version) {
   return commonPatches(target('@deepseek-ai/dsh-client-ui-chat', '>=0.2.1-alpha.2 <0.3.0-0'), {
     select: 'FunctionExpression[name.name="ChatFlow"]',
-    apply({ node, sourceFile, edit, query }) {
+    apply({ node, sourceFile, edit, query, ts }) {
       const rows = query('CallExpression[expression.name.name="map"][expression.expression.name="entries"]', node)
-      const flow = query('CallExpression').filter(call => call.expression.getText(sourceFile) === 'renderSlot' && call.arguments[0]?.getText(sourceFile) === '"conversation.chat.flow"')
+      const flow = query('CallExpression').filter(call => {
+        const slot = call.arguments[0]
+        return call.expression.getText(sourceFile) === 'renderSlot' && slot && ts.isStringLiteralLike(slot) && slot.text === 'conversation.chat.flow'
+      })
       if (rows.length !== 1 || flow.length !== 1) throw new Error('@ch4acko3/dsh-turn-fold: expected one ChatFlow render loop and slot')
       const parameters = node.parameters[0].name
       edit.prependLeft(parameters.getStart(sourceFile) + 1, 'sessionId, ')
