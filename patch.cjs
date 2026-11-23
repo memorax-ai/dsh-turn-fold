@@ -89,7 +89,7 @@ function commonPatches(targetSpec, rewrite, inline = INLINE) {
       id: 'install-turn-fold-services',
       description: 'Registers Turn Fold locales and connects its settings when the chat UI starts.',
       target: targetSpec,
-      select: 'VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])',
+      select: 'FunctionDeclaration[name.name="apply"] VariableStatement:has(VariableDeclaration[name.name="t"][initializer.expression.name.name="bind"])',
       expect: 1,
       apply({ node, sourceFile, edit }) {
         const statement = sourceFile.text.slice(node.getStart(sourceFile), node.getEnd())
